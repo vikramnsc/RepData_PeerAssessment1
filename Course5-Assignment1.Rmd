@@ -1,0 +1,200 @@
+---
+title: "Course5-Assignment1"
+author: "Vikram"
+date: "10/1/2020"
+output: html_document
+---
+
+#** Physical Activity Monitoring Assignment**
+## *Reproducible Research-Week2-Assignment*##
+
+-To begin with INSTALL and LOAD the follwoing packages.
+     (dplyr, ggplot2, lubridate, knitr, markdown).
+```{r Loading Packages, echo=FALSE}
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(knitr)
+library(markdown)
+
+##Objective 1: Load and pre-process the data. 
+
+```{r Load_Data, echo=TRUE}
+Data_assignment<-read.csv(file= "activity.csv", header = TRUE, sep=",")
+
+str(Data_assignment)
+head(Data_assignment)
+tail(Data_assignment)
+```
+
+
+###Data Pre-Processing with column of dates.###
+
+```{r Data Preprocessing, echo=TRUE}
+if (FALSE) {
+  ymd<- NULL
+     day <- NULL
+ month <- NULL
+ select<- NULL
+ 
+}
+Data_assignment$Dateform<- ymd(Data_assignment$date)
+Data_assignment$Day<-day(Data_assignment$Dateform)
+Data_assignment$Month<-month(Data_assignment$Dateform)
+Data_assignment$weekend <- as.factor(ifelse(weekdays(Data_assignment$Dateform)=="Saturday" | weekdays(Data_assignment$Dateform)=="Sunday","weekend","weekday"))
+Data_assignment$dayofweek <- as.factor(weekdays(Data_assignment$Dateform))
+
+head(Data_assignment)
+tail(Data_assignment)
+str(Data_assignment)
+```
+
+
+
+##Objective 2: Calculate mean total number of steps taken per day by creating Histogram of the total number of steps taken each day.##
+
+```{r Mean Total Number of Steps, echo=TRUE}
+Steps_Day <- Data_assignment%>% group_by(Dateform) %>% summarise(Steps_Day = sum(steps,na.rm = TRUE))
+str(Steps_Day)
+head(Steps_Day)
+tail(Steps_Day)
+Plot1<-qplot(Steps_Day,data=Steps_Day,na.rm=TRUE,binwidth=1000,
+xlab= "Total Steps taken per day", 
+ylab="Frequency using binwith 1000",main = "Histogram of the Total number of Steps per Day")
+
+Plot1 
+
+dev.copy(png,'Plot1.png')
+dev.off()
+```
+
+
+
+##Objective 3: To calulate the average daily activity pattern?##
+
+###Mean and Median number of steps taken each day.###
+
+```{r, Average Activity, echo=TRUE}
+Steps_Day_mean_median<- Steps_Day%>% summarise(average_steps = mean(Steps_Day,na.rm = TRUE),
+median_steps=median(Steps_Day,na.rm = TRUE))
+
+Steps_Day_mean_median
+```
+
+
+###Time series plot of the average number of steps taken.###
+
+```{r Time series graph, echo=TRUE}
+TimeSeries_Steps<- Data_assignment %>%  group_by(interval) %>% 
+summarize(Steps_mean=mean(steps, na.rm=TRUE))
+
+head(TimeSeries_Steps)
+tail(TimeSeries_Steps)
+str(TimeSeries_Steps)
+
+Plot2<-ggplot(TimeSeries_Steps, aes(interval, Steps_mean)) + geom_line()
+
+Plot2
+
+dev.copy(png, 'Plot2.png')
+dev.off()
+```
+
+
+###Calculate the 5-minute interval that contains the maximum number of steps?###
+
+```{r Interval showing maximum number of steps, echo=TRUE}
+Int_max_steps<- TimeSeries_Steps[TimeSeries_Steps$Steps_mean==max(TimeSeries_Steps$Steps_mean),]
+Int_max_steps
+```
+
+
+
+##Objective 4:Imputing missing values.
+
+###Calculate and report the total number of missing values in the dataset.###
+
+```{r Number of missing values, echo=TRUE}
+Data_without_NA <- na.omit(Data_assignment)
+Rows_NA<- nrow(Data_assignment)-nrow(Data_without_NA)
+Rows_NA
+```
+
+
+###Impute missing values by replacing with the mean of the number of steps for the 5-minute interval across all the days and generate the dataset with imputed values.###
+
+```{r Filling missing values, echo=TRUE}
+names(TimeSeries_Steps)[2] <- "Mean_Steps"
+Dataset_imputed <- merge(Data_assignment, Data_without_NA)
+
+Dataset_imputed$steps[is.na(Dataset_imputed$steps)] <- Dataset_imputed$Mean_Steps[is.na(Dataset_imputed$Mean_Steps)]
+
+summary(Dataset_imputed)
+str(Dataset_imputed)
+head(Dataset_imputed)
+tail(Dataset_imputed)
+```
+
+
+###Create Histogram for total number of steps taken each day from the imputed data.###
+
+```{r Histogram with imputed data, echo=TRUE}
+SumSteps_Day_newdata <- Dataset_imputed %>%  group_by(Dateform) %>% 
+summarize(Total_steps_day=sum(steps))
+
+summary(SumSteps_Day_newdata)
+str(SumSteps_Day_newdata)
+
+Plot3<-hist(SumSteps_Day_newdata$Total_steps_day, xlab = "Steps", ylab = "Frequency", main = "Total Daily Steps", breaks=50)
+Plot3
+
+dev.copy(png, 'Plot3.png')
+dev.off()
+```
+
+
+###Compare the mean and median of Old and New data.###
+
+```{r Comparing data for the old and the new dataset, echo=TRUE}
+NewData<-summary(Dataset_imputed$steps)
+OldData<-summary(Data_assignment$steps, na.rm=TRUE)
+
+NewData
+OldData
+```
+
+
+
+##Objective 7: Are there differences in activity patterns between weekdays and weekends?
+*Dataset_imputed already has been created using the Dataset_assignment data
+which has been converted to the appropriate columns of Date class and the weekday and weekend factors included.*
+
+```{r Dataset_imputed with weekend/ay columns, echo=TRUE}
+str(Dataset_imputed)
+```
+
+
+###Create a time series plot of the 5-minute interval (x-axis) and the average number of steps taken,
+averaged across all weekday days or weekend days (y-axis).###
+
+```{r Time series plot, echo=TRUE}
+Average_Steps<- Dataset_imputed %>% group_by(interval,weekend) %>%   
+  summarise(Average_Steps = mean(steps))
+
+summary(Average_Steps)
+
+Plot4<-ggplot(Average_Steps, aes(x=interval, y=Average_Steps, color=weekend)) + geom_line(linetype=1)+ facet_grid(weekend~.)+ xlab("Interval") + ylab("Mean_Steps") +
+ggtitle("Comparison of Average Number of Steps")
+
+Plot4
+
+dev.copy(png, "Plot4.png")
+dev.off()
+```
+
+
+===========================================================================================
+
+
+
+
